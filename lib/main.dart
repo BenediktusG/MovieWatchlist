@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'pages/search_page.dart'; 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Buat file-file ini sebagai placeholder sederhana
 // import 'home_page.dart';
 // import 'watchlist_page.dart';
 // import 'profile_page.dart';
 
-void main() {
-  runApp(const WatchlistApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  runApp(const WatchlistApp()); 
 }
 
 class WatchlistApp extends StatelessWidget {

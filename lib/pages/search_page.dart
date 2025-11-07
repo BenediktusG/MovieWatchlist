@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-const String tmdbApiKey = '8a26bc552f62993f812ef5b0084f77fa';
+final String tmdbApiKey = dotenv.env['TMDB_API_KEY'] ?? 'API_KEY_TIDAK_DITEMUKAN';
 const String tmdbBaseUrl = 'https://api.themoviedb.org/3';
 const String imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
