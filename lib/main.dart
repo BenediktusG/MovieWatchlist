@@ -1,5 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'pages/search_page.dart'; 
+import 'package:movie_watchlist/firebase_options.dart';
+import 'package:movie_watchlist/pages/register_page.dart';
+import 'pages/login_page.dart';
+import 'pages/search_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 // Buat file-file ini sebagai placeholder sederhana
@@ -10,7 +15,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  runApp(const WatchlistApp()); 
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  runApp(const WatchlistApp());
 }
 
 class WatchlistApp extends StatelessWidget {
@@ -33,7 +39,25 @@ class WatchlistApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      home: const MainScreen(),
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/home': (context) => const MainScreen(),
+        '/register': (context) => const RegisterPage(),
+      },
+      home: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
+          } else if (snapshot.hasData) {
+            return const MainScreen(); // User sudah login
+          } else {
+            return const LoginPage(); // User belum login
+          }
+        },
+      ),
     );
   }
 }
@@ -65,9 +89,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _widgetOptions.elementAt(_selectedIndex),
-      ),
+      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(

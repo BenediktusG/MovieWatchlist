@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-final String tmdbApiKey = dotenv.env['TMDB_API_KEY'] ?? 'API_KEY_TIDAK_DITEMUKAN';
+final String tmdbApiKey =
+    dotenv.env['TMDB_API_KEY'] ?? 'API_KEY_TIDAK_DITEMUKAN';
 const String tmdbBaseUrl = 'https://api.themoviedb.org/3';
 const String imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
 
@@ -79,15 +80,17 @@ class _SearchPageState extends State<SearchPage> {
       case SearchCategory.serialTv:
         endpoint = 'search/tv';
         break;
-      case SearchCategory.semua:
       default:
         endpoint = 'search/multi';
         break;
     }
 
     try {
-      final response = await http.get(Uri.parse(
-          '$tmdbBaseUrl/$endpoint?api_key=$tmdbApiKey&query=$query&language=id-ID'));
+      final response = await http.get(
+        Uri.parse(
+          '$tmdbBaseUrl/$endpoint?api_key=$tmdbApiKey&query=$query&language=id-ID',
+        ),
+      );
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body)['results'] as List;
@@ -96,8 +99,11 @@ class _SearchPageState extends State<SearchPage> {
         if (_selectedCategory == SearchCategory.semua) {
           setState(() {
             _results = data
-                .where((item) =>
-                    item['media_type'] == 'movie' || item['media_type'] == 'tv')
+                .where(
+                  (item) =>
+                      item['media_type'] == 'movie' ||
+                      item['media_type'] == 'tv',
+                )
                 .toList();
             _isLoading = false;
           });
@@ -167,7 +173,9 @@ class _SearchPageState extends State<SearchPage> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12.0),
-            borderSide: const BorderSide(color: Colors.blue), // Warna saat aktif
+            borderSide: const BorderSide(
+              color: Colors.blue,
+            ), // Warna saat aktif
           ),
         ),
       ),
@@ -194,11 +202,13 @@ class _SearchPageState extends State<SearchPage> {
     return ElevatedButton(
       onPressed: () => _changeCategory(category),
       style: ElevatedButton.styleFrom(
-        backgroundColor: isActive ? Colors.blue : Colors.grey[850], // Warna tombol
-        foregroundColor: isActive ? Colors.white : Colors.grey[400], // Warna teks
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
-        ),
+        backgroundColor: isActive
+            ? Colors.blue
+            : Colors.grey[850], // Warna tombol
+        foregroundColor: isActive
+            ? Colors.white
+            : Colors.grey[400], // Warna teks
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
       ),
       child: Text(text),
     );
@@ -210,7 +220,7 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     if (!_hasSearched) {
-      // State Awal 
+      // State Awal
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -227,7 +237,7 @@ class _SearchPageState extends State<SearchPage> {
     }
 
     if (_results.isEmpty) {
-      // State Tidak Ada Hasil 
+      // State Tidak Ada Hasil
       return Center(
         child: Text(
           'Tidak ada hasil untuk "$_currentQuery"',
@@ -236,14 +246,14 @@ class _SearchPageState extends State<SearchPage> {
       );
     }
 
-    // State Ada Hasil 
+    // State Ada Hasil
     return GridView.builder(
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, 
+        crossAxisCount: 3,
         crossAxisSpacing: 12.0,
         mainAxisSpacing: 12.0,
-        childAspectRatio: 0.6, 
+        childAspectRatio: 0.6,
       ),
       itemCount: _results.length,
       itemBuilder: (context, index) {
@@ -260,7 +270,8 @@ class MovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // TMDB menggunakan 'title' untuk film dan 'name' untuk serial TV
-    final String title = item['title'] ?? item['name'] ?? 'Judul Tidak Tersedia';
+    final String title =
+        item['title'] ?? item['name'] ?? 'Judul Tidak Tersedia';
     final String? posterPath = item['poster_path'];
 
     return Column(
@@ -283,7 +294,7 @@ class MovieCard extends StatelessWidget {
                           child: CircularProgressIndicator(
                             value: loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
+                                      loadingProgress.expectedTotalBytes!
                                 : null,
                           ),
                         ),
@@ -294,8 +305,10 @@ class MovieCard extends StatelessWidget {
                       return Container(
                         color: Colors.grey[900],
                         child: const Center(
-                          child: Icon(Icons.movie_creation_outlined,
-                              color: Colors.grey),
+                          child: Icon(
+                            Icons.movie_creation_outlined,
+                            color: Colors.grey,
+                          ),
                         ),
                       );
                     },
@@ -304,8 +317,10 @@ class MovieCard extends StatelessWidget {
                 : Container(
                     color: Colors.grey[900],
                     child: const Center(
-                      child: Icon(Icons.movie_creation_outlined,
-                          color: Colors.grey),
+                      child: Icon(
+                        Icons.movie_creation_outlined,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
           ),
