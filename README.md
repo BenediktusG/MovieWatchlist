@@ -1,16 +1,35 @@
-# movie_watchlist
+# Watchlist App
 
-A new Flutter project.
+Aplikasi untuk melacak film dan serial TV. Dibuat dengan Flutter dan TMDB API.
 
-## Getting Started
+## 🚀 Setup (Cara Menjalankan Proyek)
 
-This project is a starting point for a Flutter application.
+Untuk menjalankan proyek ini di komputer Anda, ikuti langkah-langkah berikut:
 
-A few resources to get you started if this is your first Flutter project:
+1.  **Clone Repository**
+    ```bash
+    git clone https://github.com/BenediktusG/MovieWatchlist
+    cd MovieWatchlist
+    ```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+2.  **Dapatkan API Key TMDB**
+    * Proyek ini memerlukan API key dari The Movie Database (TMDB).
+    * Daftar dan dapatkan key gratis Anda di https://www.themoviedb.org/
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+3.  **Buat File .env**
+    * Di folder utama (root) proyek, buat file baru bernama `.env`.
+    * Salin API key v3 Anda ke dalam file tersebut seperti ini:
+
+    ```
+    TMDB_API_KEY=MASUKKAN_API_KEY_V3_ANDA_DI_SINI
+    ```
+
+4.  **Install Dependencies**
+    ```bash
+    flutter pub get
+    ```
+
+5.  **Jalankan Aplikasi**
+    ```bash
+    flutter run
+    ```
