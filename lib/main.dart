@@ -6,6 +6,8 @@ import 'package:movie_watchlist/pages/register_page.dart';
 import 'pages/login_page.dart';
 import 'pages/search_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:movie_watchlist/pages/home_page.dart'; 
+import 'package:movie_watchlist/pages/watchlist_page.dart'; 
 
 // Buat file-file ini sebagai placeholder sederhana
 // import 'home_page.dart';
@@ -74,9 +76,9 @@ class _MainScreenState extends State<MainScreen> {
 
   // Buat halaman placeholder agar aplikasi bisa jalan
   static const List<Widget> _widgetOptions = <Widget>[
-    PlaceholderPage(title: 'Home'),
-    SearchPage(), // Halaman pencarian
-    PlaceholderPage(title: 'Watchlist'),
+    HomePage(),
+    SearchPage(), 
+    WatchlistPage(),
     PlaceholderPage(title: 'Profile'),
   ];
 
