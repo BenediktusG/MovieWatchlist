@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:movie_watchlist/main.dart';
+import 'package:movie_watchlist/pages/login_page.dart';
 
 // Ini adalah widget khusus untuk halaman Regsiter
 class RegisterPage extends StatefulWidget {
@@ -18,7 +20,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmationPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  String? _errorMessage = null;
+  String? _errorMessage;
 
   Future<void> _register() async {
     setState(() {
@@ -64,7 +66,10 @@ class _RegisterPageState extends State<RegisterPage> {
           });
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       setState(() {
@@ -272,7 +277,12 @@ class _RegisterPageState extends State<RegisterPage> {
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             // Logika untuk pindah ke halaman daftar
-                            Navigator.pushReplacementNamed(context, '/login');
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(),
+                              ),
+                            );
                           },
                       ),
                     ],

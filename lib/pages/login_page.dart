@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:movie_watchlist/main.dart';
+import 'package:movie_watchlist/pages/register_page.dart';
 
 // Ini adalah widget khusus untuk halaman login
 class LoginPage extends StatefulWidget {
@@ -31,7 +33,10 @@ class _LoginPageState extends State<LoginPage> {
 
       // Jika sukses, arahkan ke halaman home
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainScreen()),
+        );
       }
     } on FirebaseAuthException catch (e) {
       // Tangani error umum
@@ -186,9 +191,11 @@ class _LoginPageState extends State<LoginPage> {
                         recognizer: TapGestureRecognizer()
                           ..onTap = () {
                             // Logika untuk pindah ke halaman daftar
-                            Navigator.pushReplacementNamed(
+                            Navigator.pushReplacement(
                               context,
-                              '/register',
+                              MaterialPageRoute(
+                                builder: (_) => const RegisterPage(),
+                              ),
                             );
                           },
                       ),

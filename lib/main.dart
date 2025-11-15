@@ -1,13 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:movie_watchlist/firebase_options.dart';
+import 'package:movie_watchlist/pages/profile_page.dart';
+import 'package:movie_watchlist/pages/profile_tab.dart';
 import 'package:movie_watchlist/pages/register_page.dart';
+import 'package:movie_watchlist/widgets/auth_wrapper.dart';
+import 'package:provider/provider.dart';
 import 'pages/login_page.dart';
 import 'pages/search_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:movie_watchlist/pages/home_page.dart'; 
-import 'package:movie_watchlist/pages/watchlist_page.dart'; 
+import 'package:movie_watchlist/pages/home_page.dart';
+import 'package:movie_watchlist/pages/watchlist_page.dart';
 
 // Buat file-file ini sebagai placeholder sederhana
 // import 'home_page.dart';
@@ -18,7 +23,32 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const WatchlistApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        StreamProvider<User?>(
+          create: (_) => FirebaseAuth.instance.authStateChanges(),
+          initialData: null,
+        ),
+
+        StreamProvider<DocumentSnapshot<Map<String, dynamic>>?>(
+          create: (context) {
+            return FirebaseAuth.instance.authStateChanges().asyncExpand((user) {
+              if (user == null) {
+                return Stream.value(null);
+              }
+              return FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(user.uid)
+                  .snapshots();
+            });
+          },
+          initialData: null,
+        ),
+      ],
+      child: WatchlistApp(),
+    ),
+  );
 }
 
 class WatchlistApp extends StatelessWidget {
@@ -41,25 +71,7 @@ class WatchlistApp extends StatelessWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
-      routes: {
-        '/login': (context) => const LoginPage(),
-        '/home': (context) => const MainScreen(),
-        '/register': (context) => const RegisterPage(),
-      },
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          } else if (snapshot.hasData) {
-            return const MainScreen(); // User sudah login
-          } else {
-            return const LoginPage(); // User belum login
-          }
-        },
-      ),
+      home: const AuthWrapper(),
     );
   }
 }
@@ -77,9 +89,9 @@ class _MainScreenState extends State<MainScreen> {
   // Buat halaman placeholder agar aplikasi bisa jalan
   static const List<Widget> _widgetOptions = <Widget>[
     HomePage(),
-    SearchPage(), 
+    SearchPage(),
     WatchlistPage(),
-    PlaceholderPage(title: 'Profile'),
+    ProfileTab(),
   ];
 
   void _onItemTapped(int index) {
