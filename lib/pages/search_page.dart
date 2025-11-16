@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:movie_watchlist/pages/movie_detail_page.dart';
 
 final String tmdbApiKey =
     dotenv.env['TMDB_API_KEY'] ?? 'API_KEY_TIDAK_DITEMUKAN';
@@ -139,6 +140,16 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
+  // BARU : Fungsi untuk navigasi ke halaman detail film
+  void _navigateToDetail(int movieId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MovieDetailPage(movieId: movieId),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -256,8 +267,29 @@ class _SearchPageState extends State<SearchPage> {
         childAspectRatio: 0.6,
       ),
       itemCount: _results.length,
+      
       itemBuilder: (context, index) {
-        return MovieCard(item: _results[index]);
+        final item = _results[index];
+        final int itemId = item['id'] as int;
+
+        // Logika untuk menentukan apakah item ini adalah film
+        bool isMovie = false;
+        if (_selectedCategory == SearchCategory.film) {
+          isMovie = true;
+        } else if (_selectedCategory == SearchCategory.semua) {
+          isMovie = item['media_type'] == 'movie';
+        }
+
+        return GestureDetector(
+          onTap: () {
+            if (isMovie) {
+              _navigateToDetail(itemId);
+            } else {
+              debugPrint('Serial TV (ID: $itemId) diklik. Belum ada halaman detail.');
+            }
+          },
+          child: MovieCard(item: item),
+        );
       },
     );
   }

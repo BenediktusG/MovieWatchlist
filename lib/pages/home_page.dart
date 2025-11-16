@@ -5,6 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:movie_watchlist/constants.dart';
 import 'package:movie_watchlist/widgets/movie_card.dart';
 
+import 'package:movie_watchlist/pages/movie_detail_page.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -48,6 +50,15 @@ class _HomePageState extends State<HomePage> {
         _isLoading = false;
       });
     }
+  }
+
+  void _navigateToDetail(int movieId) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MovieDetailPage(movieId: movieId),
+      ),
+    );
   }
 
   @override
@@ -113,12 +124,14 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         SizedBox(
-          height: 240, // Atur tinggi agar pas
+          height: 240,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: movies.length,
             itemBuilder: (context, index) {
               final movie = movies[index];
+              final int movieId = movie['id'] as int;
+
               return Padding(
                 padding: EdgeInsets.only(
                   left: index == 0 ? 16.0 : 8.0,
@@ -126,9 +139,14 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: SizedBox(
                   width: 140,
-                  child: MovieCard(
-                    item: movie,
-                    isMovie: true,
+                  child: GestureDetector(
+                    onTap: () {
+                      _navigateToDetail(movieId);
+                    },
+                    child: MovieCard(
+                      item: movie,
+                      isMovie: true,
+                    ),
                   ),
                 ),
               );
