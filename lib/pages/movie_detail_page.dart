@@ -1,11 +1,13 @@
-// lib/pages/movie_detail_page.dart
-
 import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:movie_watchlist/constants.dart';
+
+import 'package:movie_watchlist/ui/detail_header.dart';
+import 'package:movie_watchlist/ui/detail_info.dart';
+import 'package:movie_watchlist/ui/detail_action_buttons.dart';
 
 class MovieDetailPage extends StatefulWidget {
   final int movieId;
@@ -342,246 +344,37 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(posterPath, title, voteAverage),
+          DetailHeader(
+            posterPath: posterPath,
+            title: title,
+            tmdbRating: voteAverage,
+            appRating: _appGlobalRating,
+            appVoteCount: _appVoteCount,
+          ),
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMetadataRow(year, runtime, genres),
+                DetailInfo(
+                  year: year,
+                  runtime: runtime,
+                  genres: genres,
+                  overview: overview,
+                ),
+                
                 const SizedBox(height: 24),
-                _buildSynopsis(overview),
-                const SizedBox(height: 24),
-                _buildRatingButton(),
-                const SizedBox(height: 16),
-                _buildWatchlistButton(),
+
+                DetailActionButtons(
+                  userRating: _userRating,
+                  isInWatchlist: _isInWatchlist,
+                  onRatingPressed: _showRatingDialog,
+                  onWatchlistPressed: _toggleWatchlist,
+                ),
               ],
             ),
           )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(String posterPath, String title, double voteAverage) {
-    return Stack(
-      children: [
-        Image.network(
-          '$imageBaseUrl$posterPath',
-          width: double.infinity,
-          height: 250,
-          fit: BoxFit.cover,
-        ),
-        Container(
-          width: double.infinity,
-          height: 250,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                Colors.black.withOpacity(0.6),
-                Colors.black.withOpacity(0.8),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-        ),
-        Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: Image.network(
-                  '$imageBaseUrl$posterPath',
-                  height: 120,
-                  width: 80,
-                  fit: BoxFit.cover,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        // Badge Rating TMDB (Warna Kuning)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.amber.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.amber.withOpacity(0.5)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('TMDB ', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
-                              const Icon(Icons.star, color: Colors.amber, size: 14),
-                              const SizedBox(width: 4),
-                              Text(
-                                voteAverage.toStringAsFixed(1),
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        const SizedBox(width: 8),
-
-                        // Badge Rating Aplikasi (Warna Biru)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.blue.withOpacity(0.5)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('App ', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
-                              const Icon(Icons.star, color: Colors.blue, size: 14),
-                              const SizedBox(width: 4),
-                              Text(
-                                _appGlobalRating > 0 
-                                    ? _appGlobalRating.toStringAsFixed(1) 
-                                    : '-', // Tampilkan '-' jika belum ada yg rating
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                              if (_appVoteCount > 0)
-                                Text(
-                                  ' ($_appVoteCount)', // Tampilkan jumlah voter
-                                  style: TextStyle(color: Colors.grey[400], fontSize: 10),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
-                ),
-              )
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMetadataRow(String year, int runtime, String genres) {
-    return Row(
-      children: [
-        Text(year, style: TextStyle(color: Colors.grey[400])),
-        const SizedBox(width: 8),
-        Text('•', style: TextStyle(color: Colors.grey[400])),
-        const SizedBox(width: 8),
-        Text('$runtime min', style: TextStyle(color: Colors.grey[400])),
-        const SizedBox(width: 8),
-        Text('•', style: TextStyle(color: Colors.grey[400])),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            genres,
-            style: TextStyle(color: Colors.grey[400]),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSynopsis(String overview) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Sinopsis',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          overview,
-          style: TextStyle(color: Colors.grey[300], height: 1.5),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRatingButton() {
-    final bool hasRating = _userRating > 0;
-    final int rating = _userRating;
-
-    return OutlinedButton(
-      onPressed: _showRatingDialog,
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        side: BorderSide(color: Colors.grey[800]!),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.star, color: Colors.blue[300]),
-          const SizedBox(width: 12),
-          Text(
-            hasRating ? 'Rating Anda: $rating Bintang' : 'Beri Rating',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-          ),
-          const Spacer(),
-          Row(
-            children: List.generate(5, (index) {
-              return Icon(
-                index < rating ? Icons.star : Icons.star_border,
-                color: index < rating ? Colors.blue[300] : Colors.grey,
-                size: 20,
-              );
-            }),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWatchlistButton() {
-    return ElevatedButton(
-      onPressed: _toggleWatchlist,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _isInWatchlist ? Colors.grey[800] : Colors.blue,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        minimumSize: const Size(double.infinity, 50),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            _isInWatchlist ? Icons.check : Icons.add,
-            color: Colors.white,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _isInWatchlist ? 'Sudah di Watchlist' : 'Tambah ke Watchlist',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-            ),
-          ),
         ],
       ),
     );
