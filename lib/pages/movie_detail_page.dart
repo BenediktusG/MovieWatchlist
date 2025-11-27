@@ -27,6 +27,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   bool _isInWatchlist = false;
   int _userRating = 0;
 
+  double _appGlobalRating = 0.0;
+  int _appVoteCount = 0;
+
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
@@ -41,7 +44,10 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     final uid = user?.uid;
 
     try {
-      final futures = <Future>[_fetchMovieData()];
+      final futures = <Future>[
+        _fetchMovieData(),
+        _fetchAppGlobalRating(),
+      ];
       if (uid != null) {
         futures.add(_fetchWatchlistStatus(uid));
         futures.add(_fetchRatingStatus(uid));
@@ -94,6 +100,25 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
+  Future<void> _fetchAppGlobalRating() async {
+    try {
+      final doc = await _firestore
+          .collection('movies')
+          .doc(widget.movieId.toString())
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          // Ambil rata-rata dan jumlah vote, default ke 0 jika belum ada
+          _appGlobalRating = (doc.data()?['app_vote_average'] as num?)?.toDouble() ?? 0.0;
+          _appVoteCount = (doc.data()?['app_vote_count'] as num?)?.toInt() ?? 0;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetch global rating: $e');
+    }
+  }
+
   Future<void> _toggleWatchlist() async {
     final user = _auth.currentUser;
     if (user == null) return;
@@ -127,25 +152,81 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
   }
 
-  Future<void> _saveRating(int rating) async {
+  Future<void> _saveRating(int newRating) async {
     final user = _auth.currentUser;
     if (user == null) return;
 
-    final docRef = _firestore
+    final String movieIdStr = widget.movieId.toString();
+    
+    // Referensi Dokumen Personal
+    final userRatingRef = _firestore
         .collection('users')
         .doc(user.uid)
         .collection('ratings')
-        .doc(widget.movieId.toString());
+        .doc(movieIdStr);
 
+    // Referensi Dokumen Global (Rata-rata Aplikasi)
+    final movieGlobalRef = _firestore.collection('movies').doc(movieIdStr);
+
+    // Update UI lokal sementara supaya responsif
     setState(() {
-      _userRating = rating;
+      _userRating = newRating;
     });
 
     try {
-      await docRef.set({
-        'score': rating,
-        'ratedAt': Timestamp.now(),
+      await _firestore.runTransaction((transaction) async {
+        final movieSnapshot = await transaction.get(movieGlobalRef);
+        
+        final userRatingSnapshot = await transaction.get(userRatingRef);
+        int oldRating = 0;
+        bool isUpdate = false;
+        
+        if (userRatingSnapshot.exists) {
+          oldRating = (userRatingSnapshot.data()?['score'] as num?)?.toInt() ?? 0;
+          isUpdate = true;
+        }
+
+        double currentAverage = 0.0;
+        int currentCount = 0;
+
+        if (movieSnapshot.exists) {
+          currentAverage = (movieSnapshot.data()?['app_vote_average'] as num?)?.toDouble() ?? 0.0;
+          currentCount = (movieSnapshot.data()?['app_vote_count'] as num?)?.toInt() ?? 0;
+        }
+
+        double newAverage;
+        int newCount;
+
+        if (isUpdate) {
+          if (currentCount > 0) {
+            double totalScore = (currentAverage * currentCount) - oldRating + newRating;
+            newAverage = totalScore / currentCount;
+            newCount = currentCount; 
+          } else {
+            newAverage = newRating.toDouble();
+            newCount = 1;
+          }
+        } else {
+          double totalScore = (currentAverage * currentCount) + newRating;
+          newCount = currentCount + 1;
+          newAverage = totalScore / newCount;
+        }
+
+        transaction.set(userRatingRef, {
+          'score': newRating,
+          'ratedAt': Timestamp.now(),
+        });
+
+        transaction.set(movieGlobalRef, {
+          'app_vote_average': newAverage,
+          'app_vote_count': newCount,
+          'title': _movieData?['title'] ?? _movieData?['name'],
+          'poster_path': _movieData?['poster_path'],
+        }, SetOptions(merge: true));
       });
+      
+      _fetchAppGlobalRating();
+
     } catch (e) {
       debugPrint('Gagal menyimpan rating: $e');
     }
@@ -230,6 +311,9 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   Widget _buildContent() {
+    for(final e in _movieData!.keys){
+      debugPrint('${e} : ${_movieData![e]}');
+    }
     final String posterPath = _movieData!['poster_path'] ?? '';
     final String title = _movieData!['title'] ?? _movieData!['name'] ?? '';
 
@@ -334,13 +418,54 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.star, color: Colors.yellow[700], size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          voteAverage.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
+                        // Badge Rating TMDB (Warna Kuning)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('TMDB ', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold)),
+                              const Icon(Icons.star, color: Colors.amber, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                voteAverage.toStringAsFixed(1),
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(width: 8),
+
+                        // Badge Rating Aplikasi (Warna Biru)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.blue.withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('App ', style: TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                              const Icon(Icons.star, color: Colors.blue, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                _appGlobalRating > 0 
+                                    ? _appGlobalRating.toStringAsFixed(1) 
+                                    : '-', // Tampilkan '-' jika belum ada yg rating
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              if (_appVoteCount > 0)
+                                Text(
+                                  ' ($_appVoteCount)', // Tampilkan jumlah voter
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 10),
+                                ),
+                            ],
                           ),
                         ),
                       ],
