@@ -47,7 +47,10 @@ class _WatchlistPageState extends State<WatchlistPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watchlist Saya'),
+        title: const Text(
+          'My Watchlist',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.black,
         elevation: 0,
       ),
