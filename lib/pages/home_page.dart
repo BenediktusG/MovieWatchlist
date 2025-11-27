@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:movie_watchlist/constants.dart';
-import 'package:movie_watchlist/widgets/movie_card.dart';
-
+// import 'package:movie_watchlist/ui/movie_card.dart';
 import 'package:movie_watchlist/pages/movie_detail_page.dart';
+import 'package:movie_watchlist/ui/home_search_bar.dart';
+import 'package:movie_watchlist/ui/movie_section.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -71,89 +72,22 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSearchBar(),
-                    _buildMovieSection(
+                    const HomeSearchBar(),
+                    MovieSection(
                       title: 'Sedang Populer',
                       movies: _popularMovies,
+                      onMovieTap: _navigateToDetail, 
                     ),
-                    _buildMovieSection(
+                    MovieSection(
                       title: 'Rilis Terbaru',
                       movies: _nowPlayingMovies,
+                      onMovieTap: _navigateToDetail, 
                     ),
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
       ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        readOnly: true,
-        decoration: InputDecoration(
-          hintText: 'Cari film atau serial TV...',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-          filled: true,
-          fillColor: Colors.grey[900],
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMovieSection({required String title, required List<dynamic> movies}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 240,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: movies.length,
-            itemBuilder: (context, index) {
-              final movie = movies[index];
-              final int movieId = movie['id'] as int;
-
-              return Padding(
-                padding: EdgeInsets.only(
-                  left: index == 0 ? 16.0 : 8.0,
-                  right: index == movies.length - 1 ? 16.0 : 0,
-                ),
-                child: SizedBox(
-                  width: 140,
-                  child: GestureDetector(
-                    onTap: () {
-                      _navigateToDetail(movieId);
-                    },
-                    child: MovieCard(
-                      item: movie,
-                      isMovie: true,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }

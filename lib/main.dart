@@ -3,19 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:movie_watchlist/firebase_options.dart';
-import 'package:movie_watchlist/pages/profile_tab.dart';
-import 'package:movie_watchlist/widgets/auth_wrapper.dart';
+import 'package:movie_watchlist/ui/profile_tab.dart';
+import 'package:movie_watchlist/ui/auth_wrapper.dart';
 import 'package:provider/provider.dart';
 import 'pages/search_page.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:movie_watchlist/pages/home_page.dart';
 import 'package:movie_watchlist/pages/watchlist_page.dart';
 import 'package:movie_watchlist/notification_service.dart';
-
-// Buat file-file ini sebagai placeholder sederhana
-// import 'home_page.dart';
-// import 'watchlist_page.dart';
-// import 'profile_page.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 

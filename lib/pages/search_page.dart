@@ -4,14 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:movie_watchlist/pages/movie_detail_page.dart';
+import 'package:movie_watchlist/ui/search_category_tabs.dart';
+import 'package:movie_watchlist/ui/search_input_field.dart';
+import 'package:movie_watchlist/ui/search_result_view.dart';
 
 final String tmdbApiKey =
     dotenv.env['TMDB_API_KEY'] ?? 'API_KEY_TIDAK_DITEMUKAN';
 const String tmdbBaseUrl = 'https://api.themoviedb.org/3';
-const String imageBaseUrl = 'https://image.tmdb.org/t/p/w500';
-
-// Enum untuk mengelola kategori pencarian
-enum SearchCategory { semua, film, serialTv }
 
 class SearchPage extends StatefulWidget {
   const SearchPage({super.key});
@@ -158,216 +157,29 @@ class _SearchPageState extends State<SearchPage> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildSearchBar(),
-            _buildCategoryTabs(),
-            Expanded(child: _buildBody()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: TextField(
-        controller: _searchController,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Cari film atau serial TV...',
-          hintStyle: TextStyle(color: Colors.grey[600]),
-          prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
-          filled: true,
-          fillColor: Colors.grey[900], // Warna field
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12.0),
-            borderSide: const BorderSide(
-              color: Colors.blue,
-            ), // Warna saat aktif
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCategoryTabs() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Row(
-        children: [
-          _buildCategoryButton(SearchCategory.semua, 'Semua'),
-          const SizedBox(width: 8),
-          _buildCategoryButton(SearchCategory.film, 'Film'),
-          const SizedBox(width: 8),
-          _buildCategoryButton(SearchCategory.serialTv, 'Serial TV'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryButton(SearchCategory category, String text) {
-    final bool isActive = _selectedCategory == category;
-    return ElevatedButton(
-      onPressed: () => _changeCategory(category),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: isActive
-            ? Colors.blue
-            : Colors.grey[850], // Warna tombol
-        foregroundColor: isActive
-            ? Colors.white
-            : Colors.grey[400], // Warna teks
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
-      ),
-      child: Text(text),
-    );
-  }
-
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (!_hasSearched) {
-      // State Awal
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_rounded, size: 80, color: Colors.grey[800]),
-            const SizedBox(height: 16),
-            Text(
-              'Mulai mencari film atau serial TV',
-              style: TextStyle(color: Colors.grey[600], fontSize: 16),
+            // 1. Search Bar
+            SearchInputField(controller: _searchController),
+            
+            // 2. Category Tabs
+            SearchCategoryTabs(
+              selectedCategory: _selectedCategory,
+              onCategoryChanged: _changeCategory,
+            ),
+            
+            // 3. Result View (Expanded)
+            Expanded(
+              child: SearchResultView(
+                isLoading: _isLoading,
+                hasSearched: _hasSearched,
+                currentQuery: _currentQuery,
+                results: _results,
+                selectedCategory: _selectedCategory,
+                onItemTap: _navigateToDetail, // Kirim fungsi navigasi
+              ),
             ),
           ],
         ),
-      );
-    }
-
-    if (_results.isEmpty) {
-      // State Tidak Ada Hasil
-      return Center(
-        child: Text(
-          'Tidak ada hasil untuk "$_currentQuery"',
-          style: TextStyle(color: Colors.grey[600], fontSize: 16),
-        ),
-      );
-    }
-
-    // State Ada Hasil
-    return GridView.builder(
-      padding: const EdgeInsets.all(16.0),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 12.0,
-        mainAxisSpacing: 12.0,
-        childAspectRatio: 0.6,
       ),
-      itemCount: _results.length,
-
-      itemBuilder: (context, index) {
-        final item = _results[index];
-        final int itemId = item['id'] as int;
-
-        // Logika untuk menentukan apakah item ini adalah film
-        bool isMovie;
-        if (_selectedCategory == SearchCategory.film) {
-          isMovie = true;
-        } else if (_selectedCategory == SearchCategory.serialTv) {
-          isMovie = false;
-        } else {
-          isMovie = item['media_type'] == 'movie';
-        }
-
-        return GestureDetector(
-          onTap: () {
-            _navigateToDetail(itemId, isMovie);
-          },
-          child: MovieCard(item: item),
-        );
-      },
-    );
-  }
-}
-
-class MovieCard extends StatelessWidget {
-  final dynamic item;
-  const MovieCard({super.key, required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    // TMDB menggunakan 'title' untuk film dan 'name' untuk serial TV
-    final String title =
-        item['title'] ?? item['name'] ?? 'Judul Tidak Tersedia';
-    final String? posterPath = item['poster_path'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8.0),
-            child: posterPath != null
-                ? Image.network(
-                    '$imageBaseUrl$posterPath',
-                    fit: BoxFit.cover,
-                    width: double.infinity,
-                    // Loading builder untuk menampilkan loading saat gambar di-load
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[900],
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                      loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
-                    // Error builder untuk jika gambar gagal di-load
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[900],
-                        child: const Center(
-                          child: Icon(
-                            Icons.movie_creation_outlined,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      );
-                    },
-                  )
-                // Placeholder jika tidak ada poster
-                : Container(
-                    color: Colors.grey[900],
-                    child: const Center(
-                      child: Icon(
-                        Icons.movie_creation_outlined,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          title,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
     );
   }
 }

@@ -1,10 +1,8 @@
-// lib/pages/watchlist_page.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:movie_watchlist/pages/movie_detail_page.dart';
-import 'package:movie_watchlist/widgets/movie_card.dart';
+import 'package:movie_watchlist/ui/watchlist_view.dart'; 
 
 class WatchlistPage extends StatefulWidget {
   const WatchlistPage({super.key});
@@ -17,11 +15,16 @@ class _WatchlistPageState extends State<WatchlistPage> {
   final _auth = FirebaseAuth.instance;
   final _firestore = FirebaseFirestore.instance;
 
-  void _navigateToDetail(int movieId) {
+  void _navigateToDetail(int movieId, bool isMovie) {
+    if (movieId == 0) return; // Validasi sederhana
+    
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MovieDetailPage(movieId: movieId),
+        builder: (context) => MovieDetailPage(
+          movieId: movieId,
+          isMovie: isMovie,
+        ),
       ),
     );
   }
@@ -29,17 +32,22 @@ class _WatchlistPageState extends State<WatchlistPage> {
   @override
   Widget build(BuildContext context) {
     final user = _auth.currentUser;
-
     if (user == null) {
-      return _buildEmptyView();
+      return const Scaffold(
+        body: Center(child: Text("Silakan login terlebih dahulu")),
+      );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Watchlist Saya'),
+        title: const Text(
+          'My Watchlist',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.black,
         elevation: 0,
       ),
+      
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _firestore
             .collection('users')
@@ -56,53 +64,18 @@ class _WatchlistPageState extends State<WatchlistPage> {
             return Center(child: Text('Terjadi error: ${snapshot.error}'));
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return _buildEmptyView();
-          }
+          final List<Map<String, dynamic>> processedItems = 
+              snapshot.data?.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id; 
+            return data;
+          }).toList() ?? [];
 
-          final items = snapshot.data!.docs;
-
-          return GridView.builder(
-            padding: const EdgeInsets.all(16.0),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 12.0,
-              mainAxisSpacing: 12.0,
-              childAspectRatio: 0.6,
-            ),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index].data();
-              final movieId = int.parse(items[index].id);
-              final bool isMovie = true;
-
-              return GestureDetector(
-                onTap: () => _navigateToDetail(movieId),
-                child: MovieCard(item: item, isMovie: isMovie),
-              );
-            },
+          return WatchlistView(
+            items: processedItems,
+            onItemTap: _navigateToDetail, // Oper fungsi navigasi ke UI
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildEmptyView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.bookmark_remove_outlined,
-            size: 80,
-            color: Colors.grey[800],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Watchlist kamu masih kosong',
-            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-          ),
-        ],
       ),
     );
   }
