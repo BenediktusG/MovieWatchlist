@@ -15,8 +15,7 @@ class MovieCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Logika untuk judul: 'title' untuk film, 'name' untuk serial TV
-    final String title =
-        item['title'] ?? item['name'] ?? 'Judul Tidak Tersedia';
+    final String title = item['title'] ?? item['name'] ?? 'Judul Tidak Tersedia';
     final String? posterPath = item['poster_path'];
 
     return Column(

@@ -140,7 +140,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       if (newState) {
         await docRef.set({
           'addedAt': Timestamp.now(),
-          'title': _movieData?['title'],
+          'title':  _movieData?['title'] ?? _movieData?['name'],
           'poster_path': _movieData?['poster_path'],
         });
       } else {
