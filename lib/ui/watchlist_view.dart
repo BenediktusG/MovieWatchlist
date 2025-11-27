@@ -1,10 +1,9 @@
-// Lokasi file: lib/ui/watchlist_view.dart
 import 'package:flutter/material.dart';
 import 'package:movie_watchlist/ui/movie_card.dart';
 
 class WatchlistView extends StatelessWidget {
-  final List<dynamic> items; // Data dari Page
-  final Function(int id, bool isMovie) onItemTap; // Callback navigasi
+  final List<dynamic> items; 
+  final Function(int id, bool isMovie) onItemTap;
 
   const WatchlistView({
     super.key,
@@ -35,7 +34,6 @@ class WatchlistView extends StatelessWidget {
       );
     }
 
-    // 2. Tampilan Grid Data
     return GridView.builder(
       padding: const EdgeInsets.all(16.0),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -48,12 +46,8 @@ class WatchlistView extends StatelessWidget {
       itemBuilder: (context, index) {
         final item = items[index];
         
-        // Parsing data yang aman
-        // ID dokumen firestore adalah ID film/tv
         final int itemId = int.tryParse(item['id'].toString()) ?? 0;
         
-        // Cek tipe media (disimpan saat 'add to watchlist')
-        // Default ke 'movie' (true) jika data lama tidak punya field ini
         final bool isMovie = (item['media_type'] ?? 'movie') == 'movie';
 
         return GestureDetector(
