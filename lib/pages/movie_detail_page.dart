@@ -9,10 +9,12 @@ import 'package:movie_watchlist/constants.dart';
 
 class MovieDetailPage extends StatefulWidget {
   final int movieId;
+  final bool isMovie;
 
   const MovieDetailPage({
     super.key,
     required this.movieId,
+    this.isMovie = true,
   });
 
   @override
@@ -57,8 +59,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   Future<void> _fetchMovieData() async {
+    final String endpoint = widget.isMovie ? 'movie' : 'tv';
+
     final response = await http.get(Uri.parse(
-        '$tmdbBaseUrl/movie/${widget.movieId}?api_key=$tmdbApiKey&language=id-ID'));
+        '$tmdbBaseUrl/$endpoint/${widget.movieId}?api_key=$tmdbApiKey&language=id-ID'
+    ));
+
     if (response.statusCode == 200) {
       _movieData = json.decode(response.body);
     } else {
@@ -224,16 +230,29 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   }
 
   Widget _buildContent() {
-    final String posterPath = _movieData!['poster_path'];
-    final String title = _movieData!['title'];
+    final String posterPath = _movieData!['poster_path'] ?? '';
+    final String title = _movieData!['title'] ?? _movieData!['name'] ?? '';
+
     final double voteAverage = (_movieData!['vote_average'] as num).toDouble();
-    final String releaseDate = _movieData!['release_date'];
+
+    // Film pakai 'release_date', tv series pakai 'first_air_date'
+    final String releaseDate = _movieData!['release_date'] ?? _movieData!['first_air_date'] ?? ''; 
     final String year = releaseDate.isNotEmpty ? releaseDate.split('-')[0] : 'N/A';
-    final int runtime = _movieData!['runtime'] as int;
+
+    // Hitung durasi (TV biasanya pakai episode_run_time yang berupa List)
+    int runtime = 0;
+    if (widget.isMovie) {
+       runtime = _movieData!['runtime'] ?? 0;
+    } else {
+       final List runtimes = _movieData!['episode_run_time'] ?? [];
+       if (runtimes.isNotEmpty) runtime = runtimes[0];
+    }
+    
     final String genres = (_movieData!['genres'] as List)
         .map((g) => g['name'] as String)
         .join(', ');
-    final String overview = _movieData!['overview'];
+
+    final String overview = _movieData!['overview'] ?? 'Tidak ada sinopsis';
 
     return SingleChildScrollView(
       child: Column(

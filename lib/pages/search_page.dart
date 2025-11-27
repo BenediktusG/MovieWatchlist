@@ -141,11 +141,12 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   // BARU : Fungsi untuk navigasi ke halaman detail film
-  void _navigateToDetail(int movieId) {
+  void _navigateToDetail(int movieId, bool isMovie) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => MovieDetailPage(movieId: movieId),
+        builder: (context) =>
+            MovieDetailPage(movieId: movieId, isMovie: isMovie),
       ),
     );
   }
@@ -267,26 +268,24 @@ class _SearchPageState extends State<SearchPage> {
         childAspectRatio: 0.6,
       ),
       itemCount: _results.length,
-      
+
       itemBuilder: (context, index) {
         final item = _results[index];
         final int itemId = item['id'] as int;
 
         // Logika untuk menentukan apakah item ini adalah film
-        bool isMovie = false;
+        bool isMovie;
         if (_selectedCategory == SearchCategory.film) {
           isMovie = true;
-        } else if (_selectedCategory == SearchCategory.semua) {
+        } else if (_selectedCategory == SearchCategory.serialTv) {
+          isMovie = false;
+        } else {
           isMovie = item['media_type'] == 'movie';
         }
 
         return GestureDetector(
           onTap: () {
-            if (isMovie) {
-              _navigateToDetail(itemId);
-            } else {
-              debugPrint('Serial TV (ID: $itemId) diklik. Belum ada halaman detail.');
-            }
+            _navigateToDetail(itemId, isMovie);
           },
           child: MovieCard(item: item),
         );
