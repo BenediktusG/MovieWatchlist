@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:movie_watchlist/pages/movie_detail_page.dart';
-import 'package:movie_watchlist/widgets/movie_card.dart';
+import 'package:movie_watchlist/ui/movie_card.dart';
 
 class WatchlistPage extends StatefulWidget {
   const WatchlistPage({super.key});
