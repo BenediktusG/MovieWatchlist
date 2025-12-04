@@ -32,7 +32,6 @@ class _RegisterPageState extends State<RegisterPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
     final confirmationPassword = _confirmationPasswordController.text.trim();
-
     if (username.isEmpty ||
         email.isEmpty ||
         password.isEmpty ||
@@ -50,6 +49,22 @@ class _RegisterPageState extends State<RegisterPage> {
         _isLoading = false;
       });
       return;
+    }
+
+    if (password.length < 6) {
+      setState(() {
+        _errorMessage = 'Password harus terdiri dari setidaknya 6 karakter';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final emailRegex = RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$');
+    if (!emailRegex.hasMatch(email)) {
+      setState(() {
+        _errorMessage = 'Email tidak balid';
+        _isLoading = false;
+      });
     }
 
     try {
