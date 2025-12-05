@@ -46,3 +46,7 @@ app.*.map.json
 
 # File rahasia (API keys, dll.)
 .env
+
+key
+node_modules
+*.zip
