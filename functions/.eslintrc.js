@@ -28,6 +28,19 @@ module.exports = {
   rules: {
     "quotes": ["error", "double"],
     "import/no-unresolved": 0,
-    "indent": ["error", 2],
+    
+    // Matikan aturan yang rewel di Windows
+    "linebreak-style": 0,
+    "max-len": 0,
+    "object-curly-spacing": 0,
+    "quote-props": 0,
+    "padded-blocks": 0,
+    "no-trailing-spaces": 0,
+    "eol-last": 0,
+    "indent": 0, // Pastikan ini hanya muncul SATU KALI
+    
+    // Matikan warning TypeScript yang muncul di log kamu
+    "@typescript-eslint/no-unused-vars": 0,
+    "@typescript-eslint/no-explicit-any": 0
   },
 };

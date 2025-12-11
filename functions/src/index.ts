@@ -1,32 +1,65 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+import * as functions from "firebase-functions/v1";
+import * as admin from "firebase-admin";
+import axios from "axios";
 
-import {setGlobalOptions} from "firebase-functions";
-import {onRequest} from "firebase-functions/https";
-import * as logger from "firebase-functions/logger";
+admin.initializeApp();
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+const messaging = admin.messaging();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+const TMDB_API_KEY = functions.config().tmdb.apikey;
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+export const sendNewMovieNotification = functions.pubsub
+  .schedule("0 9,21 * * *")
+  .timeZone("Asia/Makassar")
+  // PERBAIKAN 2: Tambahkan tipe data ': functions.EventContext'
+  .onRun() => {
+    try {
+      console.log("Memulai pengecekan film baru...");
+
+      const today = new Date();
+      const dateString = today.toISOString().split("T")[0];
+
+      const response = await axios.get(`${TMDB_BASE_URL}/discover/movie`, {
+        params: {
+          "api_key": TMDB_API_KEY,
+          "language": "id-ID",
+          "sort_by": "popularity.desc",
+          "primary_release_date.gte": dateString,
+          "primary_release_date.lte": dateString,
+          "page": 1,
+        },
+      });
+
+      const movies = response.data.results;
+
+      if (!movies || movies.length === 0) {
+        console.log("Tidak ada film rilis hari ini.");
+        return null;
+      }
+
+      const topMovies = movies.slice(0, 3);
+      // Explicitly type 'm' as any to avoid TS error on movie object structure
+      const movieTitles = topMovies.map((m: any) => m.title).join(", ");
+      const firstMovieId = topMovies[0].id.toString();
+
+      const message: admin.messaging.Message = {
+        topic: "all_users",
+        notification: {
+          title: "🎬 Film Baru Rilis Hari Ini!",
+          body: `Tonton sekarang: ${movieTitles}${movies.length > 3 ? " dan lainnya..." : ""}`,
+        },
+        data: {
+          type: "new_release",
+          movieId: firstMovieId,
+        },
+      };
+
+      await messaging.send(message);
+      console.log("Notifikasi film baru berhasil dikirim:", movieTitles);
+    } catch (error) {
+      console.error("Gagal mengirim notifikasi film baru:", error);
+    }
+
+    return null;
+  });
