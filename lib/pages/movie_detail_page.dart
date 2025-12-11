@@ -70,7 +70,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Future<void> _fetchMovieData() async {
     final String endpoint = widget.isMovie ? 'movie' : 'tv';
 
-    // Request data dengan translations dan video support EN+ID
     final response = await http.get(Uri.parse(
         '$tmdbBaseUrl/$endpoint/${widget.movieId}?api_key=$tmdbApiKey&language=id-ID&append_to_response=credits,videos,translations&include_video_language=en,id'
     ));
@@ -170,6 +169,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
            'addedAt': Timestamp.now(),
            'title':  _movieData?['title'] ?? _movieData?['name'],
            'poster_path': _movieData?['poster_path'],
+           'isMovie': widget.isMovie, 
          });
        } else { await docRef.delete(); }
      } catch (e) {
@@ -302,13 +302,11 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
 
   String _getCrewName(List crewList, String job) {
     if (crewList.isEmpty) return '-';
-    
     final filtered = crewList.where((c) {
       final cJob = c['job'] as String?;
       final cDept = c['department'] as String?;
       return cJob == job || cDept == 'Writing';
     }).toList();
-
     if (filtered.isEmpty) return '-';
     return filtered.take(2).map((c) => c['name']?.toString() ?? 'Unknown').join(', ');
   }
@@ -353,9 +351,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 ],
               ),
             ),
-            
             const SizedBox(width: 24), 
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -393,10 +389,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
        genres = (_movieData!['genres'] as List).map((g) => g['name'] as String).join(', ');
     }
 
-    // ID -> EN -> No Result
     String overview = _movieData!['overview'] as String? ?? '';
-
-    // 1. Jika kosong, cek Translations
     if (overview.isEmpty) {
       final translations = _movieData!['translations']?['translations'] as List?;
       if (translations != null) {
@@ -409,15 +402,12 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
         }
       }
     }
-
-    // 2. Jika masih kosong, baru pakai teks default
     if (overview.isEmpty) {
       overview = 'Sinopsis belum tersedia.';
     }
 
     return Column(
       children: [
-        // AREA KONTEN (SCROLLABLE)
         Expanded(
           child: SingleChildScrollView(
             child: Column(
@@ -436,7 +426,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
@@ -469,7 +458,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                       
                       _buildCastList(),
 
-                      const SizedBox(height: 16), 
+                      const SizedBox(height: 24), 
                     ],
                   ),
                 )
@@ -478,7 +467,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           ),
         ),
 
-        // AREA TOMBOL (STICKY)
         Container(
           padding: const EdgeInsets.all(16.0),
           decoration: BoxDecoration(
@@ -513,7 +501,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     }
 
     return SizedBox(
-      height: 110, 
+      height: 120, 
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: cast.length > 10 ? 10 : cast.length, 

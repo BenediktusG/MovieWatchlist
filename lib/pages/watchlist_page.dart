@@ -16,7 +16,7 @@ class _WatchlistPageState extends State<WatchlistPage> {
   final _firestore = FirebaseFirestore.instance;
 
   void _navigateToDetail(int movieId, bool isMovie) {
-    if (movieId == 0) return; // Validasi sederhana
+    if (movieId == 0) return; 
     
     Navigator.push(
       context,
@@ -64,16 +64,25 @@ class _WatchlistPageState extends State<WatchlistPage> {
             return Center(child: Text('Terjadi error: ${snapshot.error}'));
           }
 
-          final List<Map<String, dynamic>> processedItems = 
-              snapshot.data?.docs.map((doc) {
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text('Watchlist masih kosong'));
+          }
+
+          final List<Map<String, dynamic>> processedItems = snapshot.data!.docs.map((doc) {
             final data = doc.data();
-            data['id'] = doc.id; 
+            data['id'] = int.tryParse(doc.id) ?? 0;
+            bool isMovie = true;
+            if (data.containsKey('isMovie')) {
+               isMovie = data['isMovie'] == true;
+            }
+            data['isMovie'] = isMovie;
+
             return data;
-          }).toList() ?? [];
+          }).toList();
 
           return WatchlistView(
             items: processedItems,
-            onItemTap: _navigateToDetail, // Oper fungsi navigasi ke UI
+            onItemTap: _navigateToDetail, 
           );
         },
       ),

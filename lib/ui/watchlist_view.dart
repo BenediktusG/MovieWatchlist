@@ -47,8 +47,7 @@ class WatchlistView extends StatelessWidget {
         final item = items[index];
         
         final int itemId = int.tryParse(item['id'].toString()) ?? 0;
-        
-        final bool isMovie = (item['media_type'] ?? 'movie') == 'movie';
+        final bool isMovie = item['isMovie'] ?? true; 
 
         return GestureDetector(
           onTap: () => onItemTap(itemId, isMovie),
