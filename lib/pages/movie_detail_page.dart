@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:movie_watchlist/constants.dart';
+import 'package:url_launcher/url_launcher.dart'; 
 
 import 'package:movie_watchlist/ui/detail_header.dart';
 import 'package:movie_watchlist/ui/detail_info.dart';
@@ -69,116 +70,125 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
   Future<void> _fetchMovieData() async {
     final String endpoint = widget.isMovie ? 'movie' : 'tv';
 
+    // Request data dengan translations dan video support EN+ID
     final response = await http.get(Uri.parse(
-        '$tmdbBaseUrl/$endpoint/${widget.movieId}?api_key=$tmdbApiKey&language=id-ID'
+        '$tmdbBaseUrl/$endpoint/${widget.movieId}?api_key=$tmdbApiKey&language=id-ID&append_to_response=credits,videos,translations&include_video_language=en,id'
     ));
 
     if (response.statusCode == 200) {
-      _movieData = json.decode(response.body);
+      if (mounted) {
+        setState(() {
+           _movieData = json.decode(response.body);
+        });
+      }
     } else {
       throw Exception('Gagal memuat data film');
     }
   }
 
+  Future<void> _launchTrailer() async {
+    final videos = _movieData?['videos']?['results'] as List?;
+    if (videos == null || videos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trailer tidak tersedia')),
+      );
+      return;
+    }
+
+    final trailer = videos.firstWhere(
+      (v) => v['site'] == 'YouTube' && v['type'] == 'Trailer',
+      orElse: () => null,
+    );
+
+    final videoToPlay = trailer ?? videos.firstWhere(
+      (v) => v['site'] == 'YouTube', 
+      orElse: () => null
+    );
+
+    if (videoToPlay != null) {
+      final String key = videoToPlay['key'];
+      final Uri url = Uri.parse('https://www.youtube.com/watch?v=$key');
+      
+      try {
+        if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+           throw Exception('Could not launch $url');
+        }
+      } catch (e) {
+        debugPrint("Error launching URL: $e");
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Gagal membuka YouTube')),
+          );
+        }
+      }
+    } else {
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Video tidak ditemukan')),
+        );
+      }
+    }
+  }
+
   Future<void> _fetchWatchlistStatus(String uid) async {
-    final doc = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('watchlist')
-        .doc(widget.movieId.toString())
-        .get();
-    _isInWatchlist = doc.exists;
+    try {
+      final doc = await _firestore.collection('users').doc(uid).collection('watchlist').doc(widget.movieId.toString()).get();
+      if (mounted) setState(() { _isInWatchlist = doc.exists; });
+    } catch (e) { debugPrint("Error watchlist: $e"); }
   }
 
   Future<void> _fetchRatingStatus(String uid) async {
-    final doc = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('ratings')
-        .doc(widget.movieId.toString())
-        .get();
-    if (doc.exists) {
-      _userRating = (doc.data()?['score'] as num?)?.toInt() ?? 0;
-    }
+    try {
+      final doc = await _firestore.collection('users').doc(uid).collection('ratings').doc(widget.movieId.toString()).get();
+      if (doc.exists && mounted) { 
+        setState(() { _userRating = (doc.data()?['score'] as num?)?.toInt() ?? 0; }); 
+      }
+    } catch (e) { debugPrint("Error rating status: $e"); }
   }
 
   Future<void> _fetchAppGlobalRating() async {
     try {
-      final doc = await _firestore
-          .collection('movies')
-          .doc(widget.movieId.toString())
-          .get();
-
-      if (doc.exists) {
+      final doc = await _firestore.collection('movies').doc(widget.movieId.toString()).get();
+      if (doc.exists && mounted) {
         setState(() {
-          // Ambil rata-rata dan jumlah vote, default ke 0 jika belum ada
           _appGlobalRating = (doc.data()?['app_vote_average'] as num?)?.toDouble() ?? 0.0;
           _appVoteCount = (doc.data()?['app_vote_count'] as num?)?.toInt() ?? 0;
         });
       }
-    } catch (e) {
-      debugPrint('Error fetch global rating: $e');
-    }
+    } catch (e) { debugPrint('Error fetch global rating: $e'); }
   }
 
   Future<void> _toggleWatchlist() async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    final docRef = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('watchlist')
-        .doc(widget.movieId.toString());
-
-    final newState = !_isInWatchlist;
-    setState(() {
-      _isInWatchlist = newState;
-    });
-
-    try {
-      if (newState) {
-        await docRef.set({
-          'addedAt': Timestamp.now(),
-          'title':  _movieData?['title'] ?? _movieData?['name'],
-          'poster_path': _movieData?['poster_path'],
-        });
-      } else {
-        await docRef.delete();
-      }
-    } catch (e) {
-      setState(() {
-        _isInWatchlist = !newState;
-      });
-      debugPrint('Gagal update watchlist: $e');
-    }
+     final user = _auth.currentUser;
+     if (user == null) return;
+     final docRef = _firestore.collection('users').doc(user.uid).collection('watchlist').doc(widget.movieId.toString());
+     final newState = !_isInWatchlist;
+     setState(() { _isInWatchlist = newState; });
+     try {
+       if (newState) {
+         await docRef.set({
+           'addedAt': Timestamp.now(),
+           'title':  _movieData?['title'] ?? _movieData?['name'],
+           'poster_path': _movieData?['poster_path'],
+         });
+       } else { await docRef.delete(); }
+     } catch (e) {
+       setState(() { _isInWatchlist = !newState; });
+     }
   }
 
   Future<void> _saveRating(int newRating) async {
     final user = _auth.currentUser;
     if (user == null) return;
-
     final String movieIdStr = widget.movieId.toString();
-    
-    // Referensi Dokumen Personal
-    final userRatingRef = _firestore
-        .collection('users')
-        .doc(user.uid)
-        .collection('ratings')
-        .doc(movieIdStr);
-
-    // Referensi Dokumen Global (Rata-rata Aplikasi)
+    final userRatingRef = _firestore.collection('users').doc(user.uid).collection('ratings').doc(movieIdStr);
     final movieGlobalRef = _firestore.collection('movies').doc(movieIdStr);
 
-    // Update UI lokal sementara supaya responsif
-    setState(() {
-      _userRating = newRating;
-    });
+    setState(() { _userRating = newRating; });
 
     try {
       await _firestore.runTransaction((transaction) async {
         final movieSnapshot = await transaction.get(movieGlobalRef);
-        
         final userRatingSnapshot = await transaction.get(userRatingRef);
         int oldRating = 0;
         bool isUpdate = false;
@@ -226,18 +236,13 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
           'poster_path': _movieData?['poster_path'],
         }, SetOptions(merge: true));
       });
-      
       _fetchAppGlobalRating();
-
-    } catch (e) {
-      debugPrint('Gagal menyimpan rating: $e');
-    }
+    } catch (e) { debugPrint('Gagal menyimpan rating: $e'); }
   }
 
   Future<void> _showRatingDialog() async {
-    int localRating = _userRating;
-
-    await showDialog(
+      int localRating = _userRating;
+      await showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
@@ -249,31 +254,14 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(5, (index) {
                   return IconButton(
-                    icon: Icon(
-                      index < localRating ? Icons.star : Icons.star_border,
-                      color: Colors.blue[300],
-                      size: 32,
-                    ),
-                    onPressed: () {
-                      setDialogState(() {
-                        localRating = index + 1;
-                      });
-                    },
+                    icon: Icon(index < localRating ? Icons.star : Icons.star_border, color: Colors.blue[300], size: 32),
+                    onPressed: () { setDialogState(() { localRating = index + 1; }); },
                   );
                 }),
               ),
               actions: [
-                TextButton(
-                  child: Text('Batal', style: TextStyle(color: Colors.grey[400])),
-                  onPressed: () => Navigator.pop(context),
-                ),
-                TextButton(
-                  child: const Text('Simpan', style: TextStyle(color: Colors.blue)),
-                  onPressed: () {
-                    _saveRating(localRating);
-                    Navigator.pop(context);
-                  },
-                ),
+                TextButton(child: Text('Batal', style: TextStyle(color: Colors.grey[400])), onPressed: () => Navigator.pop(context)),
+                TextButton(child: const Text('Simpan', style: TextStyle(color: Colors.blue)), onPressed: () { _saveRating(localRating); Navigator.pop(context); }),
               ],
             );
           },
@@ -303,7 +291,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
       top: 40,
       left: 16,
       child: CircleAvatar(
-        backgroundColor: Colors.black.withOpacity(0.5),
+        backgroundColor: Colors.black.withValues(alpha: 0.5),
         child: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
@@ -312,20 +300,86 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     );
   }
 
-  Widget _buildContent() {
-    for(final e in _movieData!.keys){
-      debugPrint('${e} : ${_movieData![e]}');
+  String _getCrewName(List crewList, String job) {
+    if (crewList.isEmpty) return '-';
+    
+    final filtered = crewList.where((c) {
+      final cJob = c['job'] as String?;
+      final cDept = c['department'] as String?;
+      return cJob == job || cDept == 'Writing';
+    }).toList();
+
+    if (filtered.isEmpty) return '-';
+    return filtered.take(2).map((c) => c['name']?.toString() ?? 'Unknown').join(', ');
+  }
+
+  Widget _buildCrewInfo() {
+    final credits = _movieData?['credits'];
+    if (credits == null) return const SizedBox.shrink();
+    final List crew = credits['crew'] ?? [];
+    
+    final String director = _getCrewName(crew, 'Director');
+    
+    String writer = '-';
+    try {
+      final writerEntry = crew.firstWhere(
+          (c) => c['job'] == 'Screenplay' || c['job'] == 'Writer' || c['job'] == 'Story', 
+          orElse: () => null
+      );
+      if (writerEntry != null) {
+        writer = writerEntry['name']?.toString() ?? '-';
+      }
+    } catch (e) {
+      writer = '-';
     }
+    
+    if (director == '-' && writer == '-') {
+       return const SizedBox.shrink();
+    }
+
+    return Column(
+      children: [
+        const Divider(color: Colors.white24, height: 32),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Sutradara", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(director, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ],
+              ),
+            ),
+            
+            const SizedBox(width: 24), 
+
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Penulis", style: TextStyle(color: Colors.white70, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  Text(writer, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const Divider(color: Colors.white24, height: 32),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
     final String posterPath = _movieData!['poster_path'] ?? '';
-    final String title = _movieData!['title'] ?? _movieData!['name'] ?? '';
-
-    final double voteAverage = (_movieData!['vote_average'] as num).toDouble();
-
-    // Film pakai 'release_date', tv series pakai 'first_air_date'
+    final String title = _movieData!['title'] ?? _movieData!['name'] ?? 'No Title';
+    final double voteAverage = (_movieData!['vote_average'] as num?)?.toDouble() ?? 0.0;
     final String releaseDate = _movieData!['release_date'] ?? _movieData!['first_air_date'] ?? ''; 
     final String year = releaseDate.isNotEmpty ? releaseDate.split('-')[0] : 'N/A';
 
-    // Hitung durasi (TV biasanya pakai episode_run_time yang berupa List)
     int runtime = 0;
     if (widget.isMovie) {
        runtime = _movieData!['runtime'] ?? 0;
@@ -334,48 +388,174 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
        if (runtimes.isNotEmpty) runtime = runtimes[0];
     }
     
-    final String genres = (_movieData!['genres'] as List)
-        .map((g) => g['name'] as String)
-        .join(', ');
+    String genres = '-';
+    if (_movieData!['genres'] != null) {
+       genres = (_movieData!['genres'] as List).map((g) => g['name'] as String).join(', ');
+    }
 
-    final String overview = _movieData!['overview'] ?? 'Tidak ada sinopsis';
+    // --- LOGIKA SMART OVERVIEW (ID -> EN Fallback) ---
+    String overview = _movieData!['overview'] as String? ?? '';
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          DetailHeader(
-            posterPath: posterPath,
-            title: title,
-            tmdbRating: voteAverage,
-            appRating: _appGlobalRating,
-            appVoteCount: _appVoteCount,
-          ),
+    // 1. Jika kosong, cek Translations
+    if (overview.isEmpty) {
+      final translations = _movieData!['translations']?['translations'] as List?;
+      if (translations != null) {
+        final enTranslation = translations.firstWhere(
+          (t) => t['iso_639_1'] == 'en',
+          orElse: () => null,
+        );
+        if (enTranslation != null) {
+          overview = enTranslation['data']['overview'] ?? '';
+        }
+      }
+    }
 
-          Padding(
-            padding: const EdgeInsets.all(16.0),
+    // 2. Jika masih kosong, baru pakai teks default
+    if (overview.isEmpty) {
+      overview = 'Sinopsis belum tersedia.';
+    }
+    // ------------------------------------------------
+
+    return Column(
+      children: [
+        // AREA KONTEN (SCROLLABLE)
+        Expanded(
+          child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                DetailInfo(
-                  year: year,
-                  runtime: runtime,
-                  genres: genres,
-                  overview: overview,
+                DetailHeader(
+                  posterPath: posterPath,
+                  title: title,
+                  tmdbRating: voteAverage,
+                  appRating: _appGlobalRating,
+                  appVoteCount: _appVoteCount,
                 ),
-                
-                const SizedBox(height: 24),
 
-                DetailActionButtons(
-                  userRating: _userRating,
-                  isInWatchlist: _isInWatchlist,
-                  onRatingPressed: _showRatingDialog,
-                  onWatchlistPressed: _toggleWatchlist,
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _launchTrailer,
+                          icon: const Icon(Icons.play_circle_fill),
+                          label: const Text('Tonton Trailer'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      DetailInfo(
+                        year: year,
+                        runtime: runtime,
+                        genres: genres,
+                        overview: overview,
+                      ),
+                      
+                      _buildCrewInfo(),
+
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Pemain", 
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      _buildCastList(),
+
+                      const SizedBox(height: 16), 
+                    ],
+                  ),
+                )
+              ],
+            ),
+          ),
+        ),
+
+        // AREA TOMBOL (STICKY)
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Colors.black, 
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.5),
+                blurRadius: 10,
+                offset: const Offset(0, -5), 
+              ),
+            ],
+            border: const Border(top: BorderSide(color: Colors.white10)) 
+          ),
+          child: DetailActionButtons(
+            userRating: _userRating,
+            isInWatchlist: _isInWatchlist,
+            onRatingPressed: _showRatingDialog,
+            onWatchlistPressed: _toggleWatchlist,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCastList() {
+    final credits = _movieData?['credits'];
+    if (credits == null) return const Text("Info pemain tidak tersedia", style: TextStyle(color: Colors.grey));
+    
+    final List cast = credits['cast'] ?? [];
+    if (cast.isEmpty) {
+      return const Text("Info pemain tidak tersedia", style: TextStyle(color: Colors.grey));
+    }
+
+    return SizedBox(
+      height: 110, 
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: cast.length > 10 ? 10 : cast.length, 
+        itemBuilder: (context, index) {
+          final actor = cast[index];
+          final String name = actor['name'] ?? 'Unknown';
+          final String character = actor['character'] ?? '-';
+
+          return Container(
+            width: 120,
+            margin: const EdgeInsets.only(right: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14, 
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  character, 
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12, 
+                    color: Colors.grey[400],
+                    height: 1.2,
+                  ),
                 ),
               ],
             ),
-          )
-        ],
+          );
+        },
       ),
     );
   }
