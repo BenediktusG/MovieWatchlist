@@ -82,14 +82,6 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0; // Mulai di tab 'Home'
 
-  // Buat halaman placeholder agar aplikasi bisa jalan
-  static const List<Widget> _widgetOptions = <Widget>[
-    HomePage(),
-    SearchPage(),
-    WatchlistPage(),
-    ProfileTab(),
-  ];
-
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -98,8 +90,17 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final List<Widget> widgetOptions = <Widget>[
+      HomePage(
+        onSearchTap: () => _onItemTapped(1), // Callback ke tab Search
+      ),
+      const SearchPage(),
+      const WatchlistPage(),
+      const ProfileTab(),
+    ];
+
     return Scaffold(
-      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
+      body: Center(child: widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
