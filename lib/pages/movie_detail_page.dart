@@ -393,7 +393,7 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
        genres = (_movieData!['genres'] as List).map((g) => g['name'] as String).join(', ');
     }
 
-    // --- LOGIKA SMART OVERVIEW (ID -> EN Fallback) ---
+    // ID -> EN -> No Result
     String overview = _movieData!['overview'] as String? ?? '';
 
     // 1. Jika kosong, cek Translations
@@ -414,7 +414,6 @@ class _MovieDetailPageState extends State<MovieDetailPage> {
     if (overview.isEmpty) {
       overview = 'Sinopsis belum tersedia.';
     }
-    // ------------------------------------------------
 
     return Column(
       children: [

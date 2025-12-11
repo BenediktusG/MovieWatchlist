@@ -1,15 +1,18 @@
-// Lokasi file: lib/pages/home.dart
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:movie_watchlist/constants.dart';
-// import 'package:movie_watchlist/ui/movie_card.dart';
 import 'package:movie_watchlist/pages/movie_detail_page.dart';
 import 'package:movie_watchlist/ui/home_search_bar.dart';
 import 'package:movie_watchlist/ui/movie_section.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final VoidCallback onSearchTap; 
+
+  const HomePage({
+    super.key, 
+    required this.onSearchTap, 
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -72,7 +75,13 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const HomeSearchBar(),
+                    GestureDetector(
+                      onTap: widget.onSearchTap,
+                      child: AbsorbPointer(
+                        child: const HomeSearchBar(),
+                      ),
+                    ),
+
                     MovieSection(
                       title: 'Sedang Populer',
                       movies: _popularMovies,
